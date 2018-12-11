@@ -1,0 +1,14 @@
+{
+  "defaultSeverity": "error",
+  "extends": "tslint:recommended",
+  "rules": {
+    "no-submodule-imports": false,
+    "no-implicit-dependencies": false,
+    "no-duplicate-imports": true,
+    "no-unsafe-any": true,
+    "no-this-assignment": true,
+    "no-for-in-array": true,
+    "no-var-requires": false,
+    "interface-name": false
+  }
+}

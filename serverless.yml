@@ -1,0 +1,89 @@
+service:
+  name: CJCollector
+
+# Add the serverless-webpack plugin
+plugins:
+  - serverless-webpack
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  environment:
+    SERVICE_NAME: ${opt:stage, self:service.name}
+    STAGE: ${opt:stage, self:provider.stage}
+    PLAYERS_TABLE: ${self:provider.environment.SERVICE_NAME}__${self:provider.environment.STAGE}_players
+    PLAYER_STATS_TABLE: ${self:provider.environment.SERVICE_NAME}__${self:provider.environment.STAGE}_player_stats
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:BatchGetItem
+      Resource:
+        - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.PLAYERS_TABLE}"
+        - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.PLAYER_STATS_TABLE}"
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.PLAYERS_TABLE}/index/*"
+
+functions:
+  findPlayer:
+    handler: fn/Players/find.handler
+    events:
+      - http:
+          method: get
+          path: players/{handle}
+  collectPlayerStats:
+    handler: fn/PlayerStats/collect.handler
+    events:
+      - http:
+          method: get
+          path: playerStats/{handle}
+
+resources:
+  Resources:
+    PlayersTable:
+      Type: "AWS::DynamoDB::Table"
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:provider.environment.PLAYERS_TABLE}
+        AttributeDefinitions:
+          - AttributeName: PlayerId
+            AttributeType: S
+          - AttributeName: IndexedName
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PlayerId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: LowercaseNameIndex
+            KeySchema:
+              - AttributeName: IndexedName
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    PlayerStatsTable:
+      Type: "AWS::DynamoDB::Table"
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:provider.environment.PLAYER_STATS_TABLE}
+        AttributeDefinitions:
+          - AttributeName: PlayerId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PlayerId
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
